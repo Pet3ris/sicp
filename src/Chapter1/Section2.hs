@@ -1,5 +1,6 @@
 import Control.Monad (when, mapM_)
 import CPUTime (getCPUTime)
+import System.Random (randomRIO)
 
 -- 1.9 N.A.
 -- 1.10 N.A.
@@ -91,8 +92,8 @@ isPrime :: (Integral a) => a -> Bool
 isPrime 1 = False
 isPrime n = smallestDivisor n == n
 
-timedPrimeTest :: (Integral a) => a -> IO ()
-timedPrimeTest n = do
+timedPrimeTest :: (Integral a) => (a -> Bool) -> a -> IO ()
+timedPrimeTest isPrime n = do
   putStrLn ""
   putStr (show n)
   t <- getCPUTime
@@ -107,11 +108,59 @@ timedPrimeTest n = do
 searchForPrimes :: (Integral a) => [a] -> [a] 
 searchForPrimes xs = filter isPrime xs
 
-printFirstThree :: (Integral a) => [a] -> IO ()
-printFirstThree xs = do
-  mapM_ timedPrimeTest $ take 3 $ searchForPrimes xs
+printFirstThree :: (Integral a) => (a -> Bool) -> [a] -> IO ()
+printFirstThree isPrime xs = do
+  mapM_ (timedPrimeTest isPrime) $ take 3 $ searchForPrimes xs
+
+inputs :: (Integral a) => [[a]]
+inputs = [[1001..], [10001..], [1000001..], [10^12+1..], [(10^13+1)..]]
 
 findPrimes :: IO ()
-findPrimes = mapM_ printFirstThree [[1001..], [10001..], [1000001..], [10^12+1..], [(10^13+1)..], [(10^13+1)..]]
+findPrimes = mapM_ (printFirstThree isPrime) inputs
+
+-- 1.23
+findPrimesFast :: IO ()
+findPrimesFast = mapM_ (printFirstThree isPrime) inputs
+  where
+    isPrime 1 = False
+    isPrime n = smallestDivisor n == n
+    smallestDivisor n = findDivisor n 2
+    findDivisor n testDivisor | testDivisor^2 > n       = n
+                              | testDivisor `divides` n = testDivisor
+                              | otherwise               = findDivisor n (next testDivisor)
+    next 2 = 3
+    next n = n + 2
+    divides a b = b `rem` a == 0
+
+-- 1.24
+expMod :: (Integral a, Integral b) => a -> b -> a -> a
+expMod base exp m | exp == 0  = 1
+                  | even exp  = (expMod base (exp `div` 2) m)^2 `rem` m
+                  | otherwise = base * (expMod base (exp - 1) m) `rem` m
+
+fermatTest :: (Integral a) => a -> a -> Bool
+fermatTest n r = expMod r n n == r
+
+fastPrime :: (Integral a) => [a] -> a -> Bool
+fastPrime xs n = and (map (fermatTest n) xs)
+
+getFermatIsPrime nTests = do
+  randomNumbers <- sequence (replicate nTests (randomRIO (0 :: Integer, 1000)))
+  return (fastPrime randomNumbers)
+
+findPrimesFermat :: IO ()
+findPrimesFermat = do
+  isPrime <- getFermatIsPrime 100
+  mapM_ (printFirstThree isPrime) inputs
+
+-- 1.25 N.A.
+-- 1.26 N.A.
+
+-- 1.27
+foolsTest :: (Integral a) => a -> Bool
+foolsTest n = and (map (\a -> expMod a n n == a) [0..n-1])
+
+carmichaelsFoolTest :: Bool
+carmichaelsFoolTest = and (map foolsTest [561, 1105, 1729, 2465, 2821, 6601])
 
 main = return ()
