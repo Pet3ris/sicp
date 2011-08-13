@@ -19,8 +19,8 @@ fiter n | n < 3     = n
 
 -- 1.12
 comb :: (Integral a) => a -> a -> a
-comb n k | or [k == 0, k == n] = 1
-         | otherwise           = comb (n - 1) k + comb (n - 1) (k - 1)
+comb n k | k == 0 || k == n = 1
+         | otherwise        = comb (n - 1) k + comb (n - 1) (k - 1)
 
 -- 1.13 N.A.
 -- 1.14 N.A.
@@ -162,5 +162,33 @@ foolsTest n = and (map (\a -> expMod a n n == a) [0..n-1])
 
 carmichaelsFoolTest :: Bool
 carmichaelsFoolTest = and (map foolsTest [561, 1105, 1729, 2465, 2821, 6601])
+
+-- 1.28
+expModMaybe :: (Integral a, Integral b) => a -> b -> a -> Maybe a
+expModMaybe base exp m | exp == 0  = Just 1
+                       | even exp  = do
+                           toSquare <- (expModMaybe base (exp `div` 2) m)
+                           squared <- return (toSquare^2 `rem` m)
+                           if toSquare /= 1 || squared == 1 then Just squared else Nothing
+                       | otherwise = do
+                           value <- (expModMaybe base (exp - 1) m)
+                           return (base * value `rem` m)
+
+millerRabinTest :: (Integral a) => a -> a -> Bool
+millerRabinTest n r = expModMaybe r (n - 1) n == Just 1
+
+millerRabin :: (Integral a) => [a] -> a -> Bool
+millerRabin xs n = and (map (millerRabinTest n) xs)
+
+millerRabinIsPrime :: Int -> Integer -> IO Bool
+millerRabinIsPrime _ 1 = return False
+millerRabinIsPrime nTests n = do
+  randomNumbers <- sequence (replicate nTests (randomRIO (1, n - 1)))
+  return (millerRabin randomNumbers n)
+
+checkPrimalities :: IO ()
+checkPrimalities = do
+  primalities <- mapM (millerRabinIsPrime 100) [1, 2, 3, 4, 5, 6, 11, 13, 20, 561, 1729, 6601, 1000033]
+  mapM_ (putStrLn . show) primalities
 
 main = return ()
